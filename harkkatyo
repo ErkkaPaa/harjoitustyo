@@ -1,0 +1,358 @@
+
+/*****************************************************************************/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* Structin määrittely */
+
+/* Struct nimien tallentamiseen */
+
+
+struct Node {
+	char henkilo[30];
+	struct Node *seuraava;
+};
+typedef struct Node Solmu;
+
+/* Struct tuloksille */
+
+struct tulos {
+	char csv[30];
+	int lkm;
+	int min;
+	int max;
+	float ka;
+	struct tulos *seuraava;
+};
+typedef struct tulos Tulos;
+
+/* Aliohjelmat */
+
+/************************/
+
+void valikko() {
+
+	printf("Valitse haluamasi toiminto alla olevasta valikosta:\n");
+	printf("1) Lue nimitiedosto\n");
+	printf("2) Tulosta listassa olevat tiedot\n");
+	printf("3) Analysoi tiedot\n");
+	printf("4) Tulosta kaikki tulostiedot\n");
+	printf("5) Tallenna kaikki tulostiedot tiedostoon\n");
+	printf("6) Tyhjennä tuloslista\n");
+	printf("0) Lopeta\n");
+}
+
+/************************/
+
+/* Nimitiedoston luku (Valinta 1)*/
+
+Solmu *luku(Solmu *pA, char *nimi) {
+	
+	char tieto[30];
+	int i = 0;
+	Solmu *ptr, *ptrUusi;
+	
+
+	
+	printf("Luetaan tiedosto '%s'.\n" ,nimi);
+	
+	FILE *tiedosto;
+	tiedosto = fopen(nimi, "r");
+
+	/* Tarkastetaan saadaanko tiedosto avattua */
+	if (tiedosto == NULL) {
+		printf("Tiedoston avaaminen epäonnistui.\n");
+		return 0;
+	}
+
+	/* Luetaan annettu tiedosto */
+	while ((fgets(tieto, 29, tiedosto) !=NULL)) {
+		if ((ptrUusi=(struct Solmu*)malloc(sizeof(Solmu))) == NULL) {
+				perror("Muistin varaus epäonnistui.\n");
+				exit(1);
+		}
+
+		
+		strcpy(ptrUusi->henkilo, tieto);
+		ptrUusi->seuraava = NULL;
+		if (pA == NULL) {
+			pA = ptrUusi;
+		}
+		else {
+			ptr = pA;
+			while ((ptr->seuraava != NULL))
+				ptr = ptr->seuraava;
+			ptr->seuraava = ptrUusi;
+		}
+		i++;
+	}
+		
+
+
+	printf("Tiedosto '%s' luettu, %d nimiriviä.\n" ,nimi, i);
+	return (pA);
+}
+
+/************************/
+
+/* Nimilistan tulostus (Valinta 2) */
+
+void tulosta(Solmu *pA) {
+	
+	Solmu *ptr = pA;
+
+	if (ptr == NULL) {
+		printf("Lista on tyhjä.\n");
+		return;
+	}
+
+	while ((ptr != NULL)) {
+		printf("%s" ,ptr->henkilo);
+		ptr = ptr->seuraava;
+	}
+}
+
+/************************/
+
+/* Nimitietojen analysointi (Valinta 3) */
+
+Tulos *analysoi(Solmu *pA, char *nimi,Tulos *pTulos) {
+	
+	Solmu *ptr = pA;
+	Tulos *ptrT, *ptrTuusi;
+
+
+
+	int i = 0;
+	int pituus;
+	int pitmin = 100000;
+	int pitmax = 0;
+	int summa = 0;
+	float ka;
+	
+	if (pA == NULL) {
+		printf("Ei analysoitavaa, lue ensin nimitiedosto.\n");
+		return 0;
+	}
+	
+	while ((ptr != NULL)) {
+		pituus = strlen(ptr->henkilo)-1;
+		summa = summa + pituus;
+		if (pitmax < pituus) {
+			pitmax = pituus;
+		}
+		if (pitmin > pituus) {
+			pitmin = pituus;
+		}
+		i++;
+		ptr = ptr->seuraava;
+	}
+	ka = (float)summa/(float)i;
+	printf("Analysoidaan listassa olevat tiedot.\n");
+	printf("Datasetti Nimiä PitMin PitMax PitKA\n");
+	printf("%s%9d%7d%7d%6.1f\n" ,nimi, i, pitmin, pitmax, ka);
+
+	/* Tulostietojen tallennus structiin */
+
+	if ((ptrTuusi=(struct Tulos*)malloc(sizeof(Tulos))) == NULL) {
+		perror("Muistin varaus epäonnistui.\n");
+		exit(1);
+	}
+	strcpy(ptrTuusi->csv, nimi);
+	ptrTuusi->lkm = i;
+	ptrTuusi->min = pitmin;
+	ptrTuusi->max = pitmax;
+	ptrTuusi->ka = ka;
+
+	ptrTuusi->seuraava = NULL;
+	if (pTulos == NULL) {
+		pTulos = ptrTuusi;
+	}
+	else {
+		ptrT = pTulos;
+		while ((ptrT->seuraava != NULL))
+			ptrT = ptrT->seuraava;
+		ptrT->seuraava = ptrTuusi;
+	}
+	
+	return (pTulos);
+	
+}
+
+/************************/
+
+/* Tulosten tulostus structista (Valinta 4) */
+
+Tulos *tulostiedot(Tulos *pTulos) {
+
+	Tulos *ptr = pTulos;
+	
+
+	if (ptr == NULL) {
+		printf("Lista on tyhjä.\n");
+		return 0;
+	}
+
+	printf("Datasetti Nimiä PitMin PitMax PitKA\n");
+	while ((ptr != NULL)) {
+		printf("%s" ,ptr->csv);
+		printf("%9d" ,ptr->lkm);
+		printf("%7d" ,ptr->min);
+		printf("%7d" ,ptr->max);
+		printf("%6.1f\n" ,ptr->ka);
+		ptr = ptr->seuraava;
+	}
+	return 0;
+}
+
+/************************/
+
+
+
+Tulos *tallennusTiedostoon(Tulos *pTulos, char *nimi) {
+
+	Tulos *ptr = pTulos;
+	char otsikko[] = "Datasetti Nimiä PitMin PitMax PitKA";
+	char muisti[30];
+
+	FILE *tiedosto;
+	tiedosto = fopen(nimi, "w");
+
+	if ((tiedosto != NULL)) {
+		
+
+		fprintf(tiedosto, "%s\n", otsikko);
+		while ((ptr != NULL)) {
+			fprintf(tiedosto, "%s" ,ptr->csv);
+			fprintf(tiedosto, "%9d" ,ptr->lkm);
+			fprintf(tiedosto, "%7d" ,ptr->min);
+			fprintf(tiedosto, "%7d" ,ptr->max);
+			fprintf(tiedosto, "%6.1f\n" ,ptr->ka);
+			ptr = ptr->seuraava;
+		}
+		fclose(tiedosto);
+		printf("Tiedosto tallennettu.\n",nimi);
+		return 0;
+	}
+	else {
+
+		printf("Tiedoston avaaminen epäonnistui.\n");
+		
+		return 0;
+	}
+}
+
+/* Muistien vapauttaminen */
+
+/* Vapauta muisti listasta nimet */
+
+Solmu *vapautaNimet(Solmu *pA) {
+
+	
+	Solmu *ptr = pA;
+	while ((ptr == NULL)) {
+		pA = ptr->seuraava;		
+		free(ptr);
+		ptr = pA;
+	}
+	pA = NULL;
+	return (pA);
+}
+
+/*Vapauta muisti tuloksista */
+
+Tulos *vapautaTulos(Tulos *pA) {
+
+	Tulos *ptr = pA;
+	while ((ptr == NULL)) {
+		pA = ptr->seuraava;		
+		free(ptr);
+		ptr = pA;
+	}
+	pA = NULL;
+	return (pA);
+}
+
+/************************/
+
+/* Pääohjelma */
+
+int main(void) {
+
+	int valinta = 1;
+	char nimi[30];
+	char tallennus[30];
+	Solmu *pAlku = NULL;
+	Tulos *pTulos = NULL;
+
+	printf("\nTämä ohjelma tutkii nimitietoja sisältäviä tiedostoja.\n");
+
+	while ((valinta != 0)) {
+
+		/* Valikon tulostus aliohjelmassa pääohjelman ohjelman selkeyttämiseksi */
+
+		printf("\n");		
+		valikko();
+		printf("Anna valintasi: ");
+		scanf("%d" ,&valinta);
+
+		if (valinta == 0) {
+
+			if (pAlku != NULL) {
+				pAlku = vapautaNimet(pAlku);
+			}
+			if (pTulos != NULL) {
+				pTulos = vapautaTulos(pTulos);
+			}
+			printf("Kiitos ohjelman käytöstä.\n");
+			return 0;
+		}
+
+		else if (valinta == 1) {
+			printf("Anna luettavan tiedoston nimi: ");
+			scanf("%s",&nimi);
+			if ((pAlku != NULL)) {
+				printf("Poistetaan aiemmat tiedot ja luetaan uudet.\n");
+				pAlku = vapautaNimet(pAlku);
+			}
+			
+			pAlku = luku(pAlku, nimi);
+		}
+		
+		else if (valinta == 2) {
+			tulosta(pAlku);
+		}
+
+		else if (valinta == 3) {
+			printf("Anna analysoitavalle datasetille nimi: ");
+			scanf("%s" ,nimi);
+			pTulos = analysoi(pAlku, nimi, pTulos);
+		}
+		
+		else if (valinta == 4) {
+			tulostiedot(pTulos);
+		}
+
+		else if (valinta == 5) {
+			printf("Anna tallennettavan tulostiedoston nimi: ");
+			scanf("%s" ,&tallennus);
+			tallennusTiedostoon(pTulos, tallennus);
+		}
+
+		else if (valinta == 6) {
+			pTulos = vapautaTulos(pTulos);
+			printf("Tuloslista tyhjennetty.\n");
+		}
+
+		else {
+			printf("Tuntematon valinta yritä uudestaan\n");
+		}
+	}
+	return 0;
+}
+
+
+/*****************************************************************************/
+/* eof */
